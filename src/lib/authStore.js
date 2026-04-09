@@ -5,7 +5,9 @@ function createAuthStore() {
     const { subscribe, set, update } = writable({
         session: null,
         user: null,
+        role: 'warehouse_staff',
         loading: true,
+        recoveryMode: false,
         error: null
     });
 
@@ -13,14 +15,42 @@ function createAuthStore() {
         subscribe,
         
         async initialize() {
-            // Get initial session
             const { data: { session } } = await supabase.auth.getSession();
-            update(state => ({ ...state, session, user: session?.user || null, loading: false }));
+            if (session) {
+                const role = await this.fetchProfile(session.user.id);
+                update(state => ({ ...state, session, user: session.user, role, loading: false }));
+            } else {
+                update(state => ({ ...state, loading: false }));
+            }
 
-            // Listen for auth changes recursively 
-            supabase.auth.onAuthStateChange((_event, session) => {
-                update(state => ({ ...state, session, user: session?.user || null }));
+            supabase.auth.onAuthStateChange(async (event, session) => {
+                if (event === 'PASSWORD_RECOVERY') {
+                    update(state => ({ ...state, recoveryMode: true }));
+                }
+
+                if (session) {
+                    const role = await this.fetchProfile(session.user.id);
+                    update(state => ({ ...state, session, user: session.user, role }));
+                } else {
+                    update(state => ({ ...state, session: null, user: null, role: 'warehouse_staff', recoveryMode: false }));
+                }
             });
+        },
+
+        async fetchProfile(userId) {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', userId)
+                    .single();
+                
+                if (error) throw error;
+                return data?.role || 'warehouse_staff';
+            } catch (err) {
+                console.error("No se pudo cargar el perfil:", err.message);
+                return 'warehouse_staff';
+            }
         },
 
         async signUp(email, password, displayName) {
@@ -64,11 +94,48 @@ function createAuthStore() {
 
         async signOut() {
              try {
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
+                // Limpieza manual de persistencia para evitar sesiones "pegajosas"
+                Object.keys(localStorage).forEach(key => {
+                    if (key.includes('supabase.auth.token') || key.includes('sb-')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                await supabase.auth.signOut();
              } catch (err) {
-                update(state => ({ ...state, error: err.message }));
+                console.error("Error al salir:", err);
+             } finally {
+                // Reseteo de estado y redirección dura al origen
+                update(state => ({ ...state, session: null, user: null, role: 'warehouse_staff', recoveryMode: false }));
+                window.location.href = window.location.origin;
              }
+        },
+
+        async resetPassword(email) {
+            update(state => ({ ...state, loading: true, error: null }));
+            try {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin,
+                });
+                if (error) throw error;
+                update(state => ({ ...state, loading: false }));
+                return true;
+            } catch (err) {
+                update(state => ({ ...state, error: err.message, loading: false }));
+                throw err;
+            }
+        },
+
+        async updatePassword(newPassword) {
+            update(state => ({ ...state, loading: true, error: null }));
+            try {
+                const { error } = await supabase.auth.updateUser({ password: newPassword });
+                if (error) throw error;
+                update(state => ({ ...state, loading: false, recoveryMode: false }));
+                return true;
+            } catch (err) {
+                update(state => ({ ...state, error: err.message, loading: false }));
+                throw err;
+            }
         },
         
         clearError() {

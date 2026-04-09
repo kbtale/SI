@@ -1,22 +1,92 @@
 <script>
+  import { onMount } from "svelte";
   import { inventoryStore } from "../inventoryStore.js";
   import { authStore } from "../authStore.js";
+  import { navigationStore } from "../navigationStore.js";
+  import HelpModal from "./HelpModal.svelte";
+
+  let showNotifications = false;
+  let showHelpModal = false;
+  let topSearch = "";
+  let isSidebarOpen = false;
+
+  function toggleSidebar() {
+    isSidebarOpen = !isSidebarOpen;
+  }
+
+  $: notifications = $inventoryStore.products
+    .filter((p) => p.current_stock <= p.reorder_point)
+    .map((p) => ({
+      id: p.id,
+      title: "Stock Crítico",
+      message: `${p.name} tiene solo ${p.current_stock} ${p.unit}`,
+      sku: p.sku,
+    }));
+
+  function handleSearchEnter(e) {
+    if (e.key === "Enter") {
+      navigationStore.setSearchQuery(topSearch);
+      navigationStore.setView("inventario");
+    }
+  }
+
+  onMount(() => {
+    const handleHashChange = () => {
+      navigationStore.syncWithHash();
+      isSidebarOpen = false; // Close on navigation
+    };
+    window.addEventListener("hashchange", handleHashChange);
+
+    // Close dropdown on click outside
+    const handleClickOutside = (e) => {
+      if (showNotifications && !e.target.closest(".notifications-wrapper")) {
+        showNotifications = false;
+      }
+      if (isSidebarOpen && e.target.closest(".main-content")) {
+        isSidebarOpen = false;
+      }
+    };
+    window.addEventListener("click", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("click", handleClickOutside);
+    };
+  });
 </script>
 
 <div class="dashboard-layout">
+  <!-- Sidebar Backdrop -->
+  {#if isSidebarOpen}
+    <div 
+      class="sidebar-backdrop" 
+      on:click={toggleSidebar}
+      transition:fade={{ duration: 200 }}
+    ></div>
+  {/if}
+
   <!-- Sidebar -->
-  <aside class="sidebar card">
+  <aside class="sidebar card {isSidebarOpen ? 'open' : ''}">
     <div class="logo">
       <div class="logo-icon">{$inventoryStore.companySettings.logo_icon}</div>
       <h2>
-        {$inventoryStore.companySettings.company_name}<br /><span
-          >{$inventoryStore.companySettings.company_subtitle}</span
+        {$inventoryStore.companySettings.company_name}<br /><span>
+          {$inventoryStore.companySettings.company_subtitle}</span
         >
       </h2>
+      <button class="close-sidebar-btn" on:click={toggleSidebar}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
     <nav class="nav-links">
-      <a href="#inicio" class="nav-item active">
+      <a
+        href="#inicio"
+        class="nav-item {$navigationStore.currentView === 'inicio'
+          ? 'active'
+          : ''}"
+        on:click={() => navigationStore.setView("inicio")}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -33,7 +103,13 @@
         >
         Inicio
       </a>
-      <a href="#inventario" class="nav-item">
+      <a
+        href="#inventario"
+        class="nav-item {$navigationStore.currentView === 'inventario'
+          ? 'active'
+          : ''}"
+        on:click={() => navigationStore.setView("inventario")}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -52,7 +128,13 @@
         >
         Inventario
       </a>
-      <a href="#movimientos" class="nav-item">
+      <a
+        href="#movimientos"
+        class="nav-item {$navigationStore.currentView === 'movimientos'
+          ? 'active'
+          : ''}"
+        on:click={() => navigationStore.setView("movimientos")}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -69,7 +151,13 @@
         >
         Movimientos
       </a>
-      <a href="#reportes" class="nav-item">
+      <a
+        href="#reportes"
+        class="nav-item {$navigationStore.currentView === 'reportes'
+          ? 'active'
+          : ''}"
+        on:click={() => navigationStore.setView("reportes")}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -84,85 +172,155 @@
         >
         Reportes
       </a>
-      <a href="#configuracion" class="nav-item">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          ><path
-            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-          /><circle cx="12" cy="12" r="3" /></svg
+      {#if $authStore.role === "admin"}
+        <a
+          href="#configuracion"
+          class="nav-item {$navigationStore.currentView === 'configuracion'
+            ? 'active'
+            : ''}"
+          on:click={() => navigationStore.setView("configuracion")}
         >
-        Configuración
-      </a>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path
+              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+            /><circle cx="12" cy="12" r="3" /></svg
+          >
+          Configuración
+        </a>
+      {/if}
     </nav>
 
     <div class="sidebar-footer">
-      <button class="help-btn pill-badge">Centro de Ayuda</button>
+      <button
+        class="help-btn pill-badge"
+        on:click={() => (showHelpModal = true)}>Centro de Ayuda</button
+      >
     </div>
   </aside>
+
+  {#if showHelpModal}
+    <HelpModal on:close={() => (showHelpModal = false)} />
+  {/if}
 
   <!-- Main Content -->
   <main class="main-content">
     <!-- Top Navigation -->
     <header class="top-nav">
-      <div class="search-bar">
-        <svg
-          class="search-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          ><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg
-        >
-        <input type="text" placeholder="Buscar productos, movimientos..." />
+      <div class="top-nav-left">
+        <button class="hamburger-btn" on:click={toggleSidebar} aria-label="Menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="search-bar">
+          <svg
+            class="search-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg
+          >
+          <input
+            type="text"
+            placeholder="Buscar..."
+            bind:value={topSearch}
+            on:keydown={handleSearchEnter}
+          />
+        </div>
       </div>
 
       <div class="top-nav-actions">
-        <button class="icon-btn" aria-label="Notificaciones">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path
-              d="M10.3 21a1.94 1.94 0 0 0 3.4 0"
-            /></svg
+        <div class="notifications-wrapper">
+          <button
+            class="icon-btn"
+            aria-label="Notificaciones"
+            on:click|stopPropagation={() =>
+              (showNotifications = !showNotifications)}
           >
-          <span class="notification-dot"></span>
-        </button>
-        <button class="icon-btn" aria-label="Configuración">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><circle cx="12" cy="12" r="3" /><path
-              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
-            /></svg
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path
+                d="M10.3 21a1.94 1.94 0 0 0 3.4 0"
+              /></svg
+            >
+            {#if notifications.length > 0}
+              <span class="notification-dot"></span>
+            {/if}
+          </button>
+
+          {#if showNotifications}
+            <div class="notifications-dropdown card">
+              <div class="dropdown-header">
+                <h4>Notificaciones</h4>
+                <span class="badge">{notifications.length}</span>
+              </div>
+              <div class="dropdown-content">
+                {#if notifications.length === 0}
+                  <div class="empty-state">No hay alertas pendientes</div>
+                {:else}
+                  {#each notifications.slice(0, 5) as note}
+                    <button
+                      class="note-item"
+                      on:click={() => {
+                        navigationStore.setView("inventario");
+                        showNotifications = false;
+                      }}
+                    >
+                      <div class="note-icon">⚠️</div>
+                      <div class="note-info">
+                        <span class="note-title">{note.title}</span>
+                        <span class="note-msg">{note.message}</span>
+                      </div>
+                    </button>
+                  {/each}
+                {/if}
+              </div>
+            </div>
+          {/if}
+        </div>
+        {#if $authStore.role === "admin"}
+          <button
+            class="icon-btn"
+            aria-label="Configuración"
+            on:click={() => navigationStore.setView("configuracion")}
           >
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><circle cx="12" cy="12" r="3" /><path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+              /></svg
+            >
+          </button>
+        {/if}
         <div class="user-profile">
           <div class="user-info">
             <span class="user-name"
@@ -170,7 +328,7 @@
                 $authStore.user?.email ||
                 "Usuario"}</span
             >
-            <button class="logout-link" on:click={authStore.signOut}
+            <button class="logout-link" on:click={() => authStore.signOut()}
               >Cerrar sesión</button
             >
           </div>
@@ -364,7 +522,10 @@
     align-items: center;
     gap: 0.75rem;
     padding-left: 1rem;
+    border: none;
     border-left: 1px solid var(--border-color);
+    background: transparent;
+    cursor: pointer;
   }
 
   .user-info {
@@ -403,5 +564,197 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+  }
+
+  /* Notifications Dropdown */
+  .notifications-wrapper {
+    position: relative;
+    display: flex;
+  }
+
+  .notifications-dropdown {
+    position: absolute;
+    top: 55px;
+    right: 0;
+    width: 320px;
+    background-color: white;
+    z-index: 1000;
+    padding: 0;
+    overflow: hidden;
+    animation: slideDown 0.2s ease-out;
+    border: 1px solid var(--border-color);
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .dropdown-header {
+    padding: 1rem 1.5rem;
+    background-color: var(--bg-canvas);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .dropdown-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-main);
+  }
+
+  .dropdown-header .badge {
+    background-color: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  .dropdown-content {
+    max-height: 350px;
+    overflow-y: auto;
+  }
+
+  .empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .note-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background-color: transparent;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .note-item:hover {
+    background-color: var(--bg-canvas);
+  }
+
+  .note-icon {
+    font-size: 1.25rem;
+  }
+
+  .note-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .note-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .note-msg {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* Responsive Queries */
+  @media (max-width: 1024px) {
+    .dashboard-layout {
+      grid-template-columns: 1fr;
+      padding: 1rem;
+    }
+
+    .sidebar {
+      position: fixed;
+      left: -280px;
+      top: 0;
+      height: 100vh;
+      width: 260px;
+      z-index: 1000;
+      border-radius: 0;
+      transition: left 0.3s ease;
+      box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+    }
+
+    .sidebar.open {
+      left: 0;
+    }
+
+    .sidebar-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(2px);
+      z-index: 999;
+    }
+
+    .close-sidebar-btn {
+      display: flex;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .hamburger-btn {
+      display: flex;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+
+    .main-content {
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 650px) {
+    .search-bar {
+      display: none;
+    }
+
+    .user-info {
+      display: none;
+    }
+
+    .top-nav {
+      padding: 0.75rem 1rem;
+    }
+    
+    .dashboard-layout {
+      padding: 0.5rem;
+    }
+  }
+
+  .top-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .close-sidebar-btn {
+    display: none;
+  }
+
+  .hamburger-btn {
+    display: none;
   }
 </style>

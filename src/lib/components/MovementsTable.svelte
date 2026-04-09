@@ -1,7 +1,7 @@
 <script>
     import { inventoryStore } from '../inventoryStore.js';
+    import { navigationStore } from '../navigationStore.js';
 
-    // Format date properly
     function formatDate(dateString) {
         return new Date(dateString).toLocaleDateString('es-VE', {
             year: 'numeric', month: 'short', day: 'numeric',
@@ -13,7 +13,9 @@
 <div class="card table-container">
     <div class="table-header">
         <h3>Movimientos Recientes</h3>
-        <button class="pill-badge action-btn">Ver Todos &rsaquo;</button>
+        <button class="pill-badge action-btn" on:click={() => navigationStore.setView('movimientos')}>
+            Ver Todos &rsaquo;
+        </button>
     </div>
 
     {#if $inventoryStore.loading && (!$inventoryStore.movements || $inventoryStore.movements.length === 0)}

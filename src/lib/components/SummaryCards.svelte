@@ -1,5 +1,6 @@
 <script>
     import { inventoryStore } from '../inventoryStore.js';
+    import { navigationStore } from '../navigationStore.js';
 
     let totalProducts = 0;
     let productsNeedsReorder = 0;
@@ -15,7 +16,7 @@
 </script>
 
 <div class="summary-grid">
-    <div class="card summary-card">
+    <button class="card summary-card interactive" on:click={() => navigationStore.setView('inventario')}>
         <div class="icon-wrapper primary">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-package"><line x1="16.5" x2="7.5" y1="9.4" y2="4.2"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><polyline points="12 22 12 12"/></svg>
         </div>
@@ -23,9 +24,9 @@
             <span class="label">Productos Disponibles</span>
             <span class="value">{totalProducts}</span>
         </div>
-    </div>
+    </button>
 
-    <div class="card summary-card">
+    <button class="card summary-card interactive" on:click={() => navigationStore.setView('inventario')}>
         <div class="icon-wrapper alert">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
         </div>
@@ -33,9 +34,9 @@
             <span class="label">Requieren Pedido</span>
             <span class="value">{productsNeedsReorder} <span class="pill-badge bad">Crítico</span></span>
         </div>
-    </div>
+    </button>
 
-    <div class="card summary-card">
+    <div class="card summary-card" style="cursor: default;">
         <div class="icon-wrapper secondary">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
         </div>
@@ -58,6 +59,21 @@
         display: flex;
         align-items: center;
         gap: 1.25rem;
+        background-color: var(--bg-card);
+        border: none;
+        text-align: left;
+        width: 100%;
+        font-family: inherit;
+    }
+
+    .summary-card.interactive {
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .summary-card.interactive:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.1);
     }
 
     .icon-wrapper {

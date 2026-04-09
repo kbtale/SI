@@ -30,17 +30,18 @@ CREATE TABLE suppliers (
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    sku TEXT UNIQUE NOT NULL,
+    sku TEXT, -- Made optional for batch imports
     description TEXT,
     category TEXT,
     unit TEXT,
     photo_url TEXT,
-    unit_cost DECIMAL(10,2) NOT NULL DEFAULT 0,
-    current_stock INTEGER NOT NULL DEFAULT 0,
-    safety_stock INTEGER NOT NULL DEFAULT 0,
-    reorder_point INTEGER NOT NULL DEFAULT 0,
-    abc_class TEXT CHECK (abc_class IN ('A', 'B', 'C')) DEFAULT 'C',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    unit_cost DECIMAL(12,2) DEFAULT 0,
+    current_stock INTEGER DEFAULT 0,
+    reorder_point INTEGER DEFAULT 5,
+    abc_class TEXT DEFAULT 'C',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT products_sku_key UNIQUE (sku)
 );
 
 -- Inventory Movements
@@ -118,10 +119,35 @@ ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE company_settings ENABLE ROW LEVEL SECURITY;
 
 -- Basic Policies: Authenticated users can read products/movements. Admins can do anything.
+-- Basic Policies: Authenticated users can read products/movements.
 CREATE POLICY "Allow authenticated read products" ON products FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow authenticated insert movements" ON inventory_movements FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow authenticated read movements" ON inventory_movements FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow authenticated read suppliers" ON suppliers FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated read settings" ON company_settings FOR SELECT TO authenticated USING (true);
 
--- Insert Demo Company
-INSERT INTO company_settings (company_name, company_subtitle, logo_icon) VALUES ('Empresa Base', 'Sistema de Gestión', '🏢');
+-- Admins can manage everything
+CREATE POLICY "Admins can manage products" ON products FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+CREATE POLICY "Admins can manage movements" ON inventory_movements FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+CREATE POLICY "Admins can manage suppliers" ON suppliers FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+CREATE POLICY "Only admins can update settings" ON company_settings FOR UPDATE TO authenticated 
+USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+-- Profile Policies
+CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT TO authenticated 
+USING (auth.uid() = id);
+
+CREATE POLICY "Admins can update profiles" ON profiles FOR UPDATE TO authenticated 
+USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+-- Warehouse staff can only add movements (not delete or edit)
+CREATE POLICY "Staff can insert movements" ON inventory_movements FOR INSERT TO authenticated 
+WITH CHECK (true);
