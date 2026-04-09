@@ -1,23 +1,65 @@
 <script>
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import Chart from 'chart.js/auto';
+    import { inventoryStore } from '../inventoryStore.js';
 
     let doughnutCanvas;
     let barCanvas;
+    
+    let doughnutChart;
+    let barChart;
+
+    let entradasTotales = 0;
+    let salidasTotales = 0;
+    let porcentajeEntradas = 0;
+
+    // Reactivity
+    $: if ($inventoryStore.movements && (doughnutChart || barChart)) {
+        updateCharts($inventoryStore.movements);
+    }
+
+    function updateCharts(movements) {
+        if (!movements) return;
+
+        // --- Aggregations for Doughnut ---
+        entradasTotales = movements.filter(m => m.movement_type === 'Entrada').reduce((acc, current) => acc + current.quantity, 0);
+        salidasTotales = movements.filter(m => m.movement_type === 'Salida').reduce((acc, current) => acc + current.quantity, 0);
+        
+        let totalMovimientos = entradasTotales + salidasTotales;
+        porcentajeEntradas = totalMovimientos > 0 ? ((entradasTotales / totalMovimientos) * 100).toFixed(1) : 0;
+
+        if (doughnutChart) {
+            doughnutChart.data.datasets[0].data = totalMovimientos > 0 ? [entradasTotales, salidasTotales] : [1, 1];
+            doughnutChart.update();
+        }
+
+        // --- Aggregations for Bar Chart ---
+        const entradasPorMes = new Array(12).fill(0);
+        const salidasPorMes = new Array(12).fill(0);
+
+        movements.forEach(m => {
+            const month = new Date(m.movement_date).getMonth();
+            if (m.movement_type === 'Entrada') entradasPorMes[month] += m.quantity;
+            if (m.movement_type === 'Salida') salidasPorMes[month] += m.quantity;
+        });
+
+        if (barChart) {
+            barChart.data.datasets[0].data = entradasPorMes;
+            barChart.data.datasets[1].data = salidasPorMes;
+            barChart.update();
+        }
+    }
 
     onMount(() => {
-        // 1. Half-Doughnut Chart
+        // Initialize Doughnut Chart
         const doughnutCtx = doughnutCanvas.getContext('2d');
-        new Chart(doughnutCtx, {
+        doughnutChart = new Chart(doughnutCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Vendido', 'En Inventario'],
+                labels: ['Entradas', 'Salidas'],
                 datasets: [{
-                    data: [67.2, 32.8],
-                    backgroundColor: [
-                        '#1e3a8a', // primary blue
-                        '#e5e7eb'  // light gray track
-                    ],
+                    data: [1, 1],
+                    backgroundColor: ['#1e3a8a', '#e5e7eb'],
                     borderWidth: 0,
                     borderRadius: 10,
                     cutout: '75%'
@@ -26,34 +68,30 @@
             options: {
                 rotation: -90,
                 circumference: 180,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: true }
-                },
+                plugins: { legend: { display: false }, tooltip: { enabled: true } },
                 maintainAspectRatio: false
             }
         });
 
-        // 2. Bar Chart
+        // Initialize Bar Chart
         const barCtx = barCanvas.getContext('2d');
-        // Example mock data per the design
-        const labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul'];
-        new Chart(barCtx, {
+        const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        barChart = new Chart(barCtx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: months,
                 datasets: [
                     {
-                        label: 'Ingresos',
-                        data: [12, 19, 15, 25, 20, 30, 28],
-                        backgroundColor: '#3b82f6', // Light blue fill wrapper pattern
+                        label: 'Entradas',
+                        data: new Array(12).fill(0),
+                        backgroundColor: '#3b82f6',
                         borderRadius: { topLeft: 999, topRight: 999 },
                         barPercentage: 0.6
                     },
                     {
-                        label: 'Egresos',
-                        data: [8, 12, 10, 18, 15, 20, 18],
-                        backgroundColor: '#047857', // Semi-dark green
+                        label: 'Salidas',
+                        data: new Array(12).fill(0),
+                        backgroundColor: '#047857',
                         borderRadius: { topLeft: 999, topRight: 999 },
                         barPercentage: 0.6
                     }
@@ -63,31 +101,23 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        position: 'top',
-                        align: 'end',
-                        labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle' }
-                    }
+                    legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle' } }
                 },
                 scales: {
-                    x: {
-                        grid: { display: false },
-                        border: { display: false }
-                    },
+                    x: { grid: { display: false }, border: { display: false } },
                     y: {
-                        grid: {
-                            color: '#e5e7eb',
-                            tickLength: 0,
-                            drawBorder: false,
-                        },
+                        grid: { color: '#e5e7eb', tickLength: 0, drawBorder: false },
                         border: { display: false, dash: [5, 5] },
-                        ticks: {
-                            callback: function(value) { return '$' + value + 'K'; }
-                        }
+                        ticks: { callback: function(value) { return value + ' unds'; } }
                     }
                 }
             }
         });
+        
+        // Initial populate if data is already there
+        if ($inventoryStore.movements) {
+            updateCharts($inventoryStore.movements);
+        }
     });
 </script>
 
@@ -95,27 +125,25 @@
     <!-- Doughnut Chart Card -->
     <div class="card chart-card doughnut-card">
         <div class="chart-header">
-            <h3>Estado de Ventas/Inventario</h3>
+            <h3>Flujo de Movimientos</h3>
             <button class="menu-dots">&vellip;</button>
         </div>
         <div class="doughnut-container">
             <canvas bind:this={doughnutCanvas}></canvas>
-            <!-- Center Text absolute setup -->
             <div class="center-text">
-                <h2>67.2%</h2>
-                <p>Meta Completada</p>
+                <h2>{porcentajeEntradas}%</h2>
+                <p>Entradas</p>
             </div>
         </div>
-        <p class="chart-footer-text">El volumen de productos ha incrementado <span class="pill-badge bg-blue">+10%</span></p>
+        <p class="chart-footer-text">Entradas totales: <span class="pill-badge bg-blue">{entradasTotales}</span></p>
     </div>
 
     <!-- Bar Chart Card -->
     <div class="card chart-card bar-card">
         <div class="chart-header">
-            <h3>Análisis de Productos</h3>
+            <h3>Histórico de Movimientos</h3>
             <div class="filters">
                 <span class="pill-badge active">Mensual</span>
-                <span class="pill-badge">Anual</span>
             </div>
         </div>
         <div class="bar-container">

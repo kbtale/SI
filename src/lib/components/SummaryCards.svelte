@@ -6,9 +6,9 @@
     let totalStockValue = 0;
 
     $: {
-        if ($inventoryStore.products.length > 0) {
+        if ($inventoryStore.products && $inventoryStore.products.length > 0) {
             totalProducts = $inventoryStore.products.length;
-            productsNeedsReorder = $inventoryStore.products.filter(p => p.needs_reorder).length;
+            productsNeedsReorder = $inventoryStore.products.filter(p => p.current_stock <= p.reorder_point).length;
             totalStockValue = $inventoryStore.products.reduce((acc, current) => acc + (current.current_stock * current.unit_cost), 0);
         }
     }

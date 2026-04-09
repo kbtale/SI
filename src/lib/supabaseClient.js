@@ -8,4 +8,7 @@ if (!supabaseUrl || !supabaseKey) {
     console.warn("Faltan las credenciales de Supabase en el archivo .env!");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+const finalUrl = supabaseUrl || 'https://url-del-proyecto.supabase.co';
+const finalKey = supabaseKey || 'anon-key';
+
+export const supabase = createClient(finalUrl, finalKey);
