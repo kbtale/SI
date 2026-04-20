@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { inventoryStore } from "../inventoryStore.js";
   import { navigationStore } from "../navigationStore.js";
+  import { downloadCSV } from "../utils/exportUtils.js";
 
   const dispatch = createEventDispatcher();
 
@@ -18,6 +19,23 @@
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false),
   );
+
+  // Pagination
+  let currentPage = 1;
+  const itemsPerPage = 12;
+
+  // Reset page when search query changes
+  $: if (searchQuery !== undefined) currentPage = 1;
+
+  $: totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
+  $: paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  function prevPage() { if (currentPage > 1) currentPage--; }
+  function nextPage() { if (currentPage < totalPages) currentPage++; }
+  function goToPage(page) { currentPage = Math.max(1, Math.min(page, totalPages)); }
 
   function getAbcClass(abc) {
     switch (abc) {
@@ -106,6 +124,18 @@
     };
     reader.readAsText(file);
   }
+  function handleExport() {
+    const columns = {
+      sku: "SKU",
+      name: "Nombre",
+      category: "Categoría",
+      current_stock: "Stock Actual",
+      reorder_point: "Punto de Reorden",
+      unit_cost: "Costo Unitario",
+      abc_class: "Clase ABC",
+    };
+    downloadCSV($inventoryStore.products, "inventario_total.csv", columns);
+  }
 </script>
 
 <div class="card products-container">
@@ -144,6 +174,14 @@
       >
         {importing ? "Importando..." : "Importar CSV"}
       </button>
+      
+      <button
+        class="pill-badge secondary-btn"
+        on:click={handleExport}
+      >
+        Exportar CSV
+      </button>
+
       <button
         class="pill-badge primary-btn"
         on:click={() => dispatch("showAddForm")}
@@ -167,7 +205,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each filteredProducts as product (product.id)}
+        {#each paginatedProducts as product (product.id)}
           <tr>
             <td>
               <span class="sku-cell">
@@ -211,6 +249,31 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Pagination Controls -->
+  {#if totalPages > 1}
+    <div class="pagination">
+      <span class="page-info">{filteredProducts.length} productos · Página {currentPage} de {totalPages}</span>
+      <div class="page-controls">
+        <button class="page-btn" on:click={prevPage} disabled={currentPage <= 1} aria-label="Página anterior">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        {#each Array(totalPages) as _, i}
+          {#if totalPages <= 7 || i === 0 || i === totalPages - 1 || (i >= currentPage - 2 && i <= currentPage)}
+            <button
+              class="page-btn {currentPage === i + 1 ? 'active' : ''}"
+              on:click={() => goToPage(i + 1)}
+            >{i + 1}</button>
+          {:else if i === 1 || i === totalPages - 2}
+            <span class="page-ellipsis">…</span>
+          {/if}
+        {/each}
+        <button class="page-btn" on:click={nextPage} disabled={currentPage >= totalPages} aria-label="Página siguiente">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -414,5 +477,74 @@
   .font-bold {
     font-weight: 700;
     color: var(--text-main);
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .page-info {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .page-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .page-btn {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .page-btn:hover:not(:disabled) {
+    background-color: var(--bg-canvas);
+    color: var(--text-main);
+  }
+
+  .page-btn.active {
+    background-color: var(--color-primary);
+    color: white;
+    box-shadow: 0 2px 8px rgba(30, 58, 138, 0.25);
+  }
+
+  .page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .page-ellipsis {
+    width: 28px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 600px) {
+    .pagination {
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+    }
   }
 </style>

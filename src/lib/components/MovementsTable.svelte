@@ -1,6 +1,7 @@
 <script>
     import { inventoryStore } from '../inventoryStore.js';
     import { navigationStore } from '../navigationStore.js';
+    import { downloadCSV } from '../utils/exportUtils.js';
 
     function formatDate(dateString) {
         return new Date(dateString).toLocaleDateString('es-VE', {
@@ -8,14 +9,31 @@
             hour: '2-digit', minute:'2-digit'
         });
     }
+
+    function handleExport() {
+        const columns = {
+            'movement_date': 'Fecha',
+            'products.sku': 'SKU',
+            'products.name': 'Producto',
+            'movement_type': 'Tipo',
+            'quantity': 'Cantidad',
+            'notes': 'Notas'
+        };
+        downloadCSV($inventoryStore.movements, 'historial_movimientos.csv', columns);
+    }
 </script>
 
 <div class="card table-container">
     <div class="table-header">
         <h3>Movimientos Recientes</h3>
-        <button class="pill-badge action-btn" on:click={() => navigationStore.setView('movimientos')}>
-            Ver Todos &rsaquo;
-        </button>
+        <div class="header-actions">
+            <button class="pill-badge secondary-btn" on:click={handleExport} style="margin-right: 0.5rem; font-size: 0.8rem; padding: 0.4rem 0.8rem; cursor: pointer;">
+                Exportar CSV
+            </button>
+            <button class="pill-badge action-btn" on:click={() => navigationStore.setView('movimientos')}>
+                Ver Todos &rsaquo;
+            </button>
+        </div>
     </div>
 
     {#if $inventoryStore.loading && (!$inventoryStore.movements || $inventoryStore.movements.length === 0)}
@@ -157,5 +175,33 @@
         padding: 2rem 0;
         text-align: center;
         color: var(--text-muted);
+    }
+
+    @media (max-width: 600px) {
+        .table-container {
+            padding: 1.25rem;
+        }
+
+        .table-header {
+            margin-bottom: 1rem;
+        }
+
+        .table-header h3 {
+            font-size: 0.95rem;
+        }
+
+        .melt-table th {
+            padding: 0.75rem 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        .melt-table td {
+            padding: 0.75rem 0.25rem;
+            font-size: 0.8rem;
+        }
+
+        .product-name {
+            font-size: 0.7rem;
+        }
     }
 </style>

@@ -3,6 +3,7 @@
   import { inventoryStore } from "../inventoryStore.js";
   import { authStore } from "../authStore.js";
   import { navigationStore } from "../navigationStore.js";
+  import { fade } from "svelte/transition";
   import HelpModal from "./HelpModal.svelte";
 
   let showNotifications = false;
@@ -12,6 +13,10 @@
 
   function toggleSidebar() {
     isSidebarOpen = !isSidebarOpen;
+  }
+
+  function closeSidebar() {
+    isSidebarOpen = false;
   }
 
   $: notifications = $inventoryStore.products
@@ -58,24 +63,53 @@
 <div class="dashboard-layout">
   <!-- Sidebar Backdrop -->
   {#if isSidebarOpen}
-    <div 
-      class="sidebar-backdrop" 
-      on:click={toggleSidebar}
+    <button
+      type="button"
+      class="sidebar-backdrop"
+      on:click={closeSidebar}
+      on:keydown={(e) => e.key === "Escape" && closeSidebar()}
+      aria-label="Cerrar menú lateral"
       transition:fade={{ duration: 200 }}
-    ></div>
+    ></button>
   {/if}
 
   <!-- Sidebar -->
   <aside class="sidebar card {isSidebarOpen ? 'open' : ''}">
     <div class="logo">
-      <div class="logo-icon">{$inventoryStore.companySettings.logo_icon}</div>
+      <div class="logo-icon">
+        {#if $inventoryStore.companySettings.logo_url}
+          <img
+            src={$inventoryStore.companySettings.logo_url}
+            alt="Logo"
+            class="logo-img"
+          />
+        {:else}
+          {$inventoryStore.companySettings.logo_icon}
+        {/if}
+      </div>
       <h2>
         {$inventoryStore.companySettings.company_name}<br /><span>
           {$inventoryStore.companySettings.company_subtitle}</span
         >
       </h2>
-      <button class="close-sidebar-btn" on:click={toggleSidebar}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button class="close-sidebar-btn" on:click={closeSidebar} aria-label="Cerrar menú lateral">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><line x1="18" y1="6" x2="6" y2="18" /><line
+            x1="6"
+            y1="6"
+            x2="18"
+            y2="18"
+          /></svg
+        >
       </button>
     </div>
 
@@ -202,8 +236,18 @@
     <div class="sidebar-footer">
       <button
         class="help-btn pill-badge"
-        on:click={() => (showHelpModal = true)}>Centro de Ayuda</button
+        on:click|stopPropagation={() => {
+          showHelpModal = true;
+          closeSidebar();
+        }}>Centro de Ayuda</button
       >
+      <button
+        class="logout-sidebar-btn pill-badge mt-2"
+        on:click={() => authStore.signOut()}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar sesión
+      </button>
     </div>
   </aside>
 
@@ -216,8 +260,28 @@
     <!-- Top Navigation -->
     <header class="top-nav">
       <div class="top-nav-left">
-        <button class="hamburger-btn" on:click={toggleSidebar} aria-label="Menu">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <button
+          class="hamburger-btn"
+          on:click|stopPropagation={toggleSidebar}
+          aria-label="Menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><line x1="3" y1="12" x2="21" y2="12" /><line
+              x1="3"
+              y1="6"
+              x2="21"
+              y2="6"
+            /><line x1="3" y1="18" x2="21" y2="18" /></svg
+          >
         </button>
         <div class="search-bar">
           <svg
@@ -377,15 +441,26 @@
   }
 
   .logo-icon {
-    background-color: var(--color-primary);
-    color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    background-color: white;
+    color: var(--color-primary);
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+  }
+
+  .logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 2px;
   }
 
   .logo h2 {
@@ -440,12 +515,33 @@
     padding: 0.75rem;
   }
 
+  .mt-2 {
+    margin-top: 0.5rem;
+  }
+
+  .logout-sidebar-btn {
+    width: 100%;
+    background-color: #fee2e2;
+    color: #ef4444;
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+  }
+
+  .logout-sidebar-btn:hover {
+    background-color: #fecACA;
+  }
+
   /* Main Content */
   .main-content {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
   }
+
 
   .top-nav {
     display: flex;
@@ -669,6 +765,21 @@
     color: var(--text-muted);
   }
 
+  .top-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .close-sidebar-btn {
+    display: none;
+  }
+
+  .hamburger-btn {
+    display: none;
+  }
+
   /* Responsive Queries */
   @media (max-width: 1024px) {
     .dashboard-layout {
@@ -685,7 +796,7 @@
       z-index: 1000;
       border-radius: 0;
       transition: left 0.3s ease;
-      box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
     }
 
     .sidebar.open {
@@ -698,9 +809,11 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.4);
+      background: rgba(0, 0, 0, 0.4);
       backdrop-filter: blur(2px);
       z-index: 999;
+      border: none;
+      padding: 0;
     }
 
     .close-sidebar-btn {
@@ -735,26 +848,32 @@
     }
 
     .top-nav {
-      padding: 0.75rem 1rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 16px;
     }
-    
+
     .dashboard-layout {
       padding: 0.5rem;
+      gap: 0.75rem;
+    }
+
+    .content-wrapper {
+      gap: 0.75rem;
+    }
+
+    .notifications-dropdown {
+      width: calc(100vw - 2rem);
+      right: -1rem;
     }
   }
 
-  .top-nav-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-  }
+  @media (max-width: 360px) {
+    .dashboard-layout {
+      padding: 0.25rem;
+    }
 
-  .close-sidebar-btn {
-    display: none;
-  }
-
-  .hamburger-btn {
-    display: none;
+    .top-nav {
+      padding: 0.4rem 0.5rem;
+    }
   }
 </style>

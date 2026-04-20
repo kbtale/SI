@@ -5,7 +5,7 @@ function createInventoryStore() {
     const { subscribe, set, update } = writable({
         products: [],
         movements: [],
-        companySettings: { company_name: 'Cargando...', company_subtitle: '', logo_icon: '⏳' },
+        companySettings: { company_name: 'Cargando...', company_subtitle: '', logo_icon: '⏳', logo_url: '' },
         loading: false,
         error: null
     });

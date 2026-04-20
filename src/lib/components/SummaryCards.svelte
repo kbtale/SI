@@ -50,7 +50,7 @@
 <style>
     .summary-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
@@ -77,8 +77,9 @@
     }
 
     .icon-wrapper {
-        width: 56px;
-        height: 56px;
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
         border-radius: var(--radius-pill);
         display: flex;
         align-items: center;
@@ -102,21 +103,26 @@
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
+        min-width: 0;
     }
 
     .label {
-        font-size: 0.875rem;
+        font-size: 0.8rem;
         color: var(--text-muted);
         font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .value {
-        font-size: 1.5rem;
+        font-size: 1.35rem;
         font-weight: 700;
         color: var(--text-main);
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        flex-wrap: wrap;
     }
 
     .pill-badge {
@@ -127,5 +133,33 @@
     .pill-badge.bad {
         background-color: #fee2e2;
         color: #b91c1c;
+    }
+
+    @media (max-width: 600px) {
+        .summary-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .summary-card {
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .icon-wrapper {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+        }
+
+        .icon-wrapper svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .value {
+            font-size: 1.15rem;
+        }
     }
 </style>

@@ -4,6 +4,7 @@
     let companyName = $inventoryStore.companySettings.company_name;
     let subtitle = $inventoryStore.companySettings.company_subtitle;
     let logoIcon = $inventoryStore.companySettings.logo_icon;
+    let logoUrl = $inventoryStore.companySettings.logo_url || '';
 
     let loading = false;
     let success = false;
@@ -17,7 +18,8 @@
             await inventoryStore.updateCompanySettings({
                 company_name: companyName,
                 company_subtitle: subtitle,
-                logo_icon: logoIcon
+                logo_icon: logoIcon,
+                logo_url: logoUrl
             });
             success = true;
             setTimeout(() => success = false, 3000);
@@ -47,15 +49,32 @@
         {/if}
 
         <form on:submit|preventDefault={handleUpdate} class="settings-form">
+             <div class="field">
+                <label for="comp-name">Nombre de la Empresa</label>
+                <input id="comp-name" type="text" bind:value={companyName} required placeholder="Ej: Reyes Estrategias Eléctricas C.A." />
+            </div>
+
             <div class="row">
                 <div class="field">
-                    <label for="comp-name">Nombre de la Empresa</label>
-                    <input id="comp-name" type="text" bind:value={companyName} required />
+                    <label for="comp-url">URL del Logo (Imagen)</label>
+                    <input id="comp-url" type="text" bind:value={logoUrl} placeholder="https://ejemplo.com/logo.png" />
                 </div>
-                <div class="field">
-                    <label for="comp-icon">Icono / Emoji</label>
-                    <input id="comp-icon" type="text" bind:value={logoIcon} maxlength="2" style="width: 80px; text-align: center; font-size: 1.5rem;" />
+                <div class="field narrow">
+                    <label for="comp-icon">Fallback (Emoji)</label>
+                    <input id="comp-icon" type="text" bind:value={logoIcon} maxlength="2" style="text-align: center; font-size: 1.5rem;" />
                 </div>
+            </div>
+
+            <div class="logo-preview-section">
+                <span class="field-label">Vista Previa del Logo</span>
+                <div class="preview-box">
+                    {#if logoUrl}
+                        <img src={logoUrl} alt="Preview" class="preview-img" on:error={() => {}} />
+                    {:else}
+                        <span class="preview-emoji">{logoIcon || '🏢'}</span>
+                    {/if}
+                </div>
+                <p class="helper-text">Se mostrará en la barra lateral del panel.</p>
             </div>
 
             <div class="field">
@@ -113,6 +132,51 @@
     .row {
         display: flex;
         gap: 1.5rem;
+        align-items: flex-end;
+    }
+
+    .field.narrow {
+        flex: 0 0 120px;
+    }
+
+    .logo-preview-section {
+        background-color: var(--bg-canvas);
+        padding: 1.5rem;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        border: 1px dashed var(--border-color);
+    }
+
+    .preview-box {
+        width: 64px;
+        height: 64px;
+        background-color: white;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .preview-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 4px;
+    }
+
+    .preview-emoji {
+        font-size: 2rem;
+    }
+
+    .helper-text {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin: 0;
     }
 
     .field {
@@ -122,10 +186,11 @@
         flex: 1;
     }
 
-    label {
+    label, .field-label {
         font-size: 0.85rem;
         font-weight: 600;
         color: var(--text-main);
+        display: block;
     }
 
     input {
@@ -197,5 +262,25 @@
         font-weight: 700;
         text-transform: uppercase;
         font-size: 0.7rem;
+    }
+
+    @media (max-width: 600px) {
+        .settings-card {
+            padding: 1.25rem;
+        }
+
+        .row {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .field.narrow {
+            flex: auto;
+        }
+
+        .save-btn {
+            width: 100%;
+            text-align: center;
+        }
     }
 </style>

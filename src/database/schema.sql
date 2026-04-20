@@ -8,6 +8,7 @@ CREATE TABLE company_settings (
     company_name TEXT NOT NULL,
     company_subtitle TEXT,
     logo_icon TEXT DEFAULT '🏢',
+    logo_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -76,37 +77,34 @@ FOR EACH ROW
 EXECUTE FUNCTION update_product_stock();
 
 -- Calculate ABC Class based on Pareto Principle (Total Inventory Value)
--- Class A = Top 70-80% value, Class B = Next 15-20%, Class C = Bottom 5-10%
+-- Class A = Top 80% value, Class B = Next 15%, Class C = Bottom 5%
+-- Optimized: uses a single set-based UPDATE instead of a per-row loop
 CREATE OR REPLACE FUNCTION calculate_abc_class()
 RETURNS void AS $$
-DECLARE
-    total_value DECIMAL(12,2);
-    accumulated_value DECIMAL(12,2) := 0;
-    prod RECORD;
-    cumulative_percentage DECIMAL(5,2);
 BEGIN
-    -- Calculate total inventory value
-    SELECT COALESCE(SUM(current_stock * unit_cost), 0) INTO total_value FROM products WHERE current_stock > 0;
-    
-    IF total_value = 0 THEN
-        UPDATE products SET abc_class = 'C';
-        RETURN;
-    END IF;
-
-    -- Iterate through products sorted by value descending
-    FOR prod IN (SELECT id, (current_stock * unit_cost) as value FROM products ORDER BY (current_stock * unit_cost) DESC)
-    LOOP
-        accumulated_value := accumulated_value + prod.value;
-        cumulative_percentage := (accumulated_value / total_value) * 100;
-        
-        IF cumulative_percentage <= 80 THEN
-            UPDATE products SET abc_class = 'A' WHERE id = prod.id;
-        ELSIF cumulative_percentage <= 95 THEN
-            UPDATE products SET abc_class = 'B' WHERE id = prod.id;
-        ELSE
-            UPDATE products SET abc_class = 'C' WHERE id = prod.id;
-        END IF;
-    END LOOP;
+    WITH product_values AS (
+        SELECT id, COALESCE(current_stock * unit_cost, 0) as val
+        FROM products
+    ),
+    total AS (
+        SELECT COALESCE(NULLIF(SUM(val), 0), 1) as total_val FROM product_values
+    ),
+    ranked AS (
+        SELECT
+            id,
+            val,
+            SUM(val) OVER (ORDER BY val DESC, id ASC) as accumulated_val
+        FROM product_values
+    )
+    UPDATE products p
+    SET abc_class = CASE
+        WHEN t.total_val <= 1 THEN 'C'
+        WHEN (r.accumulated_val - r.val) / t.total_val < 0.80 THEN 'A'
+        WHEN (r.accumulated_val - r.val) / t.total_val < 0.95 THEN 'B'
+        ELSE 'C'
+    END
+    FROM ranked r, total t
+    WHERE p.id = r.id;
 END;
 $$ LANGUAGE plpgsql;
 

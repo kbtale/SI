@@ -106,7 +106,8 @@ function createAuthStore() {
              } finally {
                 // Reseteo de estado y redirección dura al origen
                 update(state => ({ ...state, session: null, user: null, role: 'warehouse_staff', recoveryMode: false }));
-                window.location.href = window.location.origin;
+                // Set explicitly to root, then force reload to kill SPA state
+                window.location.href = '/';
              }
         },
 

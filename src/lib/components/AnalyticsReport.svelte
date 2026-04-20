@@ -216,4 +216,34 @@
         border-radius: 99px;
         font-size: 0.7rem;
     }
+
+    @media (max-width: 768px) {
+        .grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .grid {
+            gap: 0.75rem;
+        }
+
+        .analysis-card {
+            padding: 1.25rem;
+        }
+
+        .summary-box {
+            padding: 1.25rem;
+            gap: 1.5rem;
+        }
+
+        .m-valueHighlight {
+            font-size: 1.5rem;
+        }
+
+        .m-item {
+            padding: 0.75rem;
+            font-size: 0.8rem;
+        }
+    }
 </style>
