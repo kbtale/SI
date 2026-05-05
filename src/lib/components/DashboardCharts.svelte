@@ -140,13 +140,13 @@
                     data: [1, 1],
                     backgroundColor: ['#1e3a8a', '#e5e7eb'],
                     borderWidth: 0,
-                    borderRadius: 10,
-                    cutout: '75%'
+                    borderRadius: 10
                 }]
             },
             options: {
                 rotation: -90,
                 circumference: 180,
+                cutout: '75%',
                 plugins: { legend: { display: false }, tooltip: { enabled: true } },
                 maintainAspectRatio: false
             }

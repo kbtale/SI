@@ -6,7 +6,8 @@ function createAuthStore() {
         session: null,
         user: null,
         role: 'warehouse_staff',
-        loading: true,
+        loading: false,
+        initializing: true,
         recoveryMode: false,
         error: null
     });
@@ -18,9 +19,9 @@ function createAuthStore() {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 const role = await this.fetchProfile(session.user.id);
-                update(state => ({ ...state, session, user: session.user, role, loading: false }));
+                update(state => ({ ...state, session, user: session.user, role, initializing: false }));
             } else {
-                update(state => ({ ...state, loading: false }));
+                update(state => ({ ...state, initializing: false }));
             }
 
             supabase.auth.onAuthStateChange(async (event, session) => {

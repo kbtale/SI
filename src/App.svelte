@@ -31,7 +31,7 @@
   });
 </script>
 
-{#if $authStore.loading && $authStore.session === null}
+{#if $authStore.initializing}
     <!-- Initial verification state is fast, we just show blank or a loader -->
     <div style="height: 100vh; display: flex; align-items:center; justify-content:center; color:#9ca3af;">
       Cargando aplicación...
