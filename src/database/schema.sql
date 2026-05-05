@@ -7,7 +7,7 @@ CREATE TABLE company_settings (
     id SERIAL PRIMARY KEY,
     company_name TEXT NOT NULL,
     company_subtitle TEXT,
-    logo_icon TEXT DEFAULT '🏢',
+    logo_icon TEXT DEFAULT 'REE',
     logo_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

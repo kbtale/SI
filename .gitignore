@@ -36,3 +36,5 @@ dist-ssr
 *.py
 *.txt
 export/
+.agents/
+skills-lock.json

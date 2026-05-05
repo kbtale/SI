@@ -121,7 +121,6 @@
       gap: 1rem;
   }
 
-  /* Modal Overlay */
   .modal-overlay {
       position: fixed;
       top: 0;
@@ -135,5 +134,14 @@
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
+  }
+
+  @media (max-width: 1024px) {
+      .movements-view-grid {
+          grid-template-columns: 1fr;
+      }
+      .col-side {
+          order: -1; /* Poner el formulario arriba en móviles */
+      }
   }
 </style>

@@ -60,6 +60,7 @@ function createAuthStore() {
                     email,
                     password,
                     options: {
+                        emailRedirectTo: "https://ree-sistema-administrativo.vercel.app/",
                         data: {
                             displayName: displayName || email.split('@')[0]
                         }
@@ -115,7 +116,7 @@ function createAuthStore() {
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin,
+                    redirectTo: "https://ree-sistema-administrativo.vercel.app/",
                 });
                 if (error) throw error;
                 update(state => ({ ...state, loading: false }));
