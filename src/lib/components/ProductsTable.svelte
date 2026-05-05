@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
+  import { fade } from "svelte/transition";
   import { inventoryStore } from "../inventoryStore.js";
   import { navigationStore } from "../navigationStore.js";
   import { downloadCSV } from "../utils/exportUtils.js";
@@ -14,11 +15,61 @@
     }
   }
 
-  $: filteredProducts = $inventoryStore.products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false),
-  );
+  let sortKey = "name";
+  let sortDirection = 0; // 0: off, 1: asc, -1: desc
+
+  function toggleSort(key) {
+    if (sortKey !== key) {
+      sortKey = key;
+      sortDirection = 1;
+    } else {
+      if (sortDirection === 1) sortDirection = -1;
+      else if (sortDirection === -1) sortDirection = 0;
+      else sortDirection = 1;
+    }
+  }
+
+  // Toast system
+  let toasts = [];
+  function addToast(message, type = 'info') {
+    const id = Date.now();
+    toasts = [...toasts, { id, message, type }];
+    setTimeout(() => {
+      toasts = toasts.filter(t => t.id !== id);
+    }, 4000);
+  }
+
+  $: filteredProducts = $inventoryStore.products
+    .filter((p) => {
+      const search = searchQuery.toLowerCase();
+      const nameMatch = p.name.toLowerCase().includes(search);
+      const skuMatch = p.sku?.toLowerCase().includes(search) ?? false;
+      const status = p.current_stock <= p.reorder_point ? "alerta" : "ok";
+      const statusMatch = status.includes(search);
+      return nameMatch || skuMatch || statusMatch;
+    })
+    .sort((a, b) => {
+      if (sortDirection === 0) return 0;
+      
+      let aVal, bVal;
+      
+      if (sortKey === "value") {
+        aVal = a.current_stock * a.unit_cost;
+        bVal = b.current_stock * b.unit_cost;
+      } else if (sortKey === "status") {
+        // Alerta (stock <= reorder) should come first in desc
+        aVal = a.current_stock <= a.reorder_point ? 1 : 0;
+        bVal = b.current_stock <= b.reorder_point ? 1 : 0;
+      } else {
+        aVal = a[sortKey];
+        bVal = b[sortKey];
+      }
+
+      if (typeof aVal === "string") {
+        return (aVal || "").localeCompare(bVal || "") * sortDirection;
+      }
+      return ((aVal || 0) - (bVal || 0)) * sortDirection;
+    });
 
   // Pagination
   let currentPage = 1;
@@ -141,12 +192,12 @@
     try {
       const updated = await inventoryStore.calculateABC();
       if (updated) {
-        alert("Clasificación ABC actualizada exitosamente.");
+        addToast("Clasificación ABC actualizada exitosamente.", "success");
       } else {
-        alert("No hay productos o no hay cambios.");
+        addToast("No hay cambios necesarios en la clasificación.", "info");
       }
     } catch (err) {
-      alert("Error calculando ABC: " + err.message);
+      addToast("Error calculando ABC: " + err.message, "error");
     }
   }
 
@@ -220,13 +271,27 @@
     <table class="melt-table">
       <thead>
         <tr>
-          <th style="width: 120px;">SKU / ID</th>
-          <th style="min-width: 200px;">Producto</th>
-          <th class="hide-mobile">Categoría</th>
-          <th>Stock</th>
-          <th class="hide-mobile">ABC</th>
-          <th class="hide-xs">Valor</th>
-          <th>Estado</th>
+          <th style="width: 120px; cursor: pointer;" on:click={() => toggleSort('sku')}>
+            SKU {sortKey === 'sku' && sortDirection !== 0 ? (sortDirection === 1 ? ' ↑' : ' ↓') : ''}
+          </th>
+          <th style="width: auto; min-width: 200px; cursor: pointer;" on:click={() => toggleSort('name')}>
+            Producto {sortKey === 'name' && sortDirection !== 0 ? (sortDirection === 1 ? ' ↑' : ' ↓') : ''}
+          </th>
+          <th class="hide-mobile" style="width: 140px; cursor: pointer;" on:click={() => toggleSort('category')}>
+            Categoría {sortKey === 'category' && sortDirection !== 0 ? (sortDirection === 1 ? ' ↑' : ' ↓') : ''}
+          </th>
+          <th style="width: 120px; cursor: pointer;" on:click={() => toggleSort('current_stock')}>
+            Stock {sortKey === 'current_stock' && sortDirection !== 0 ? (sortDirection === 1 ? ' ↑' : ' ↓') : ''}
+          </th>
+          <th class="hide-mobile" style="width: 80px; cursor: pointer;" on:click={() => toggleSort('abc_class')}>
+            ABC {sortKey === 'abc_class' && sortDirection !== 0 ? (sortDirection === 1 ? ' ↑' : ' ↓') : ''}
+          </th>
+          <th class="hide-xs" style="width: 110px; cursor: pointer;" on:click={() => toggleSort('value')}>
+            Valor {sortKey === 'value' && sortDirection !== 0 ? (sortDirection === 1 ? ' ↑' : ' ↓') : ''}
+          </th>
+          <th style="width: 100px; cursor: pointer;" on:click={() => toggleSort('status')}>
+            Estado {sortKey === 'status' && sortDirection !== 0 ? (sortDirection === 1 ? ' ↑' : ' ↓') : ''}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -336,6 +401,22 @@
   </table>
 </div>
 
+<!-- Toast Container -->
+<div class="toast-container">
+  {#each toasts as toast (toast.id)}
+    <div class="toast {toast.type}" transition:fade>
+      <div class="toast-content">
+        {#if toast.type === 'success'}
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        {:else if toast.type === 'error'}
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        {/if}
+        <span>{toast.message}</span>
+      </div>
+    </div>
+  {/each}
+</div>
+
 <style>
   .products-container {
     padding: 2rem;
@@ -410,7 +491,7 @@
   .melt-table {
     width: 100%;
     border-collapse: collapse;
-    table-layout: auto;
+    table-layout: fixed;
   }
 
   .melt-table th {
@@ -617,6 +698,48 @@
     color: #b91c1c;
   }
 
+  /* Toasts */
+  .toast-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    z-index: 9999;
+  }
+
+  .toast {
+    padding: 1rem 1.5rem;
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border-left: 4px solid var(--color-primary);
+    min-width: 300px;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .toast.success { border-left-color: #10b981; }
+  .toast.error { border-left-color: #ef4444; }
+  .toast.info { border-left-color: var(--color-primary); }
+
+  .toast-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+
+  .toast.success svg { color: #10b981; }
+  .toast.error svg { color: #ef4444; }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
   /* ------------------- PRINT VIEW ------------------- */
   .audit-print-area {
     display: none;
@@ -625,19 +748,50 @@
   @media print {
     :global(html), :global(body) {
       background: white;
+      color: black;
       margin: 0;
       padding: 0;
+      overflow: visible;
+      overflow-x: visible;
+      overflow-y: visible;
+    }
+
+    :global(::-webkit-scrollbar) {
+      display: none;
+    }
+
+    :global(body > *:not(#app)) {
+      display: none;
+    }
+
+    :global(body #app), 
+    :global(body .dashboard-layout), 
+    :global(body .main-content), 
+    :global(body .content-wrapper), 
+    :global(body .inventory-view) {
+      display: block;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
     }
     
-    :global(body #app > *), :global(body .sidebar), :global(body .top-nav) {
+    :global(body #app .sidebar), 
+    :global(body #app .top-nav), 
+    :global(body #app .hide-print) {
       display: none;
     }
 
-    div.products-container {
+    .view-actions, 
+    .pagination, 
+    .toast-container,
+    .products-container {
       display: none;
     }
 
-    div.audit-print-area {
+    .audit-print-area {
       display: block;
       width: 100%;
       padding: 20px;

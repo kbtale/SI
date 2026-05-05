@@ -68,7 +68,6 @@
       <button
         class="pill-badge secondary-btn"
         on:click={handleExport}
-        style="margin-right: 0.5rem; font-size: 0.8rem; padding: 0.4rem 0.8rem; cursor: pointer;"
       >
         Exportar CSV
       </button>
@@ -237,11 +236,45 @@
     font-weight: 600;
   }
 
+  .action-btn, .secondary-btn, .primary-btn {
+    padding: 0.6rem 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-pill);
+    transition: all 0.2s ease;
+  }
+
+  .primary-btn {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+  }
+
+  .secondary-btn {
+    background-color: var(--bg-canvas);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+  }
+
+  .secondary-btn:hover {
+    background-color: var(--bg-card);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
   .action-btn {
     background-color: var(--bg-canvas);
     color: var(--color-primary);
-    padding: 0.5rem 1rem;
-    font-weight: 500;
+    border: 1px solid var(--color-primary);
+  }
+
+  .action-btn:hover {
+    background-color: var(--color-primary);
+    color: white;
   }
 
   .table-scroll {
