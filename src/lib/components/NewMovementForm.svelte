@@ -84,11 +84,18 @@
           >
             Salida
           </button>
+          <button
+            type="button"
+            class="toggle-btn {movementType === 'Ajuste' ? 'active adjust' : ''}"
+            on:click={() => (movementType = "Ajuste")}
+          >
+            Ajuste
+          </button>
         </div>
       </div>
       <div class="field">
-        <label for="qty">Cantidad</label>
-        <input id="qty" type="number" min="1" bind:value={quantity} required />
+        <label for="qty">Cantidad {movementType === 'Ajuste' ? '(puede ser negativo)' : ''}</label>
+        <input id="qty" type="number" min={movementType === 'Ajuste' ? '' : '1'} step="1" bind:value={quantity} required />
         {#if selectedProduct}
           <span class="unit-hint">{selectedProduct.unit}</span>
         {/if}
@@ -103,6 +110,12 @@
         placeholder="Ej: Recepción de pedido #45 ..."
       ></textarea>
     </div>
+
+    {#if movementType === 'Salida' || movementType === 'Ajuste'}
+      <div class="warning-box">
+        <strong>Aviso:</strong> Esta solicitud requerirá autorización de un administrador para descontar el inventario físico.
+      </div>
+    {/if}
 
     <button type="submit" class="submit-btn" disabled={loading || !productId}>
       {loading ? "Procesando..." : "Registrar Movimiento"}
@@ -210,6 +223,11 @@
     color: #b91c1c;
   }
 
+  .toggle-btn.active.adjust {
+    background-color: #e0e7ff;
+    color: #4f46e5;
+  }
+
   .submit-btn {
     background-color: var(--color-primary);
     color: white;
@@ -228,6 +246,15 @@
   .error-box {
     background-color: #fee2e2;
     color: #b91c1c;
+    padding: 0.75rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+
+  .warning-box {
+    background-color: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
     padding: 0.75rem;
     border-radius: 10px;
     font-size: 0.8rem;

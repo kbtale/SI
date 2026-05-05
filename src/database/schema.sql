@@ -50,8 +50,9 @@ CREATE TABLE inventory_movements (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE NOT NULL,
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    movement_type TEXT CHECK (movement_type IN ('Entrada', 'Salida')) NOT NULL,
-    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    movement_type TEXT CHECK (movement_type IN ('Entrada', 'Salida', 'Ajuste')) NOT NULL,
+    quantity INTEGER NOT NULL, -- Quantity can be negative for Adjustments
+    status TEXT CHECK (status IN ('Pendiente', 'Aprobado', 'Rechazado')) DEFAULT 'Aprobado',
     movement_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     notes TEXT
 );
@@ -62,17 +63,30 @@ CREATE TABLE inventory_movements (
 CREATE OR REPLACE FUNCTION update_product_stock()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.movement_type = 'Entrada' THEN
-        UPDATE products SET current_stock = current_stock + NEW.quantity WHERE id = NEW.product_id;
-    ELSIF NEW.movement_type = 'Salida' THEN
-        UPDATE products SET current_stock = current_stock - NEW.quantity WHERE id = NEW.product_id;
+    -- If it's a new approved movement
+    IF TG_OP = 'INSERT' AND NEW.status = 'Aprobado' THEN
+        IF NEW.movement_type = 'Entrada' OR NEW.movement_type = 'Ajuste' THEN
+            UPDATE products SET current_stock = current_stock + NEW.quantity WHERE id = NEW.product_id;
+        ELSIF NEW.movement_type = 'Salida' THEN
+            UPDATE products SET current_stock = current_stock - NEW.quantity WHERE id = NEW.product_id;
+        END IF;
     END IF;
+
+    -- If a movement was updated from Pendiente to Aprobado
+    IF TG_OP = 'UPDATE' AND OLD.status = 'Pendiente' AND NEW.status = 'Aprobado' THEN
+        IF NEW.movement_type = 'Entrada' OR NEW.movement_type = 'Ajuste' THEN
+            UPDATE products SET current_stock = current_stock + NEW.quantity WHERE id = NEW.product_id;
+        ELSIF NEW.movement_type = 'Salida' THEN
+            UPDATE products SET current_stock = current_stock - NEW.quantity WHERE id = NEW.product_id;
+        END IF;
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_update_stock
-AFTER INSERT ON inventory_movements
+AFTER INSERT OR UPDATE ON inventory_movements
 FOR EACH ROW
 EXECUTE FUNCTION update_product_stock();
 

@@ -69,22 +69,17 @@ function createInventoryStore() {
              }
         },
 
-        // Add a new movement (Entrada / Salida)
+        // Add a new movement (Entrada / Salida / Ajuste)
         async addMovement({ productId, type, quantity, notes }) {
             try {
-                if (quantity <= 0) {
-                    throw new Error("La cantidad debe ser mayor a cero.");
+                if (type !== 'Ajuste' && quantity <= 0) {
+                    throw new Error("La cantidad debe ser mayor a cero para Entradas y Salidas.");
                 }
 
-                // If Salida, validate stock
-                if (type === 'Salida') {
-                    const state = get(this);
-                    const product = state.products.find(p => p.id === productId);
-                    if (!product) throw new Error("Producto no encontrado en inventario.");
-                    
-                    if (quantity > product.current_stock) {
-                        throw new Error(`Error: Inventario insuficiente. Solo quedan ${product.current_stock} unidades.`);
-                    }
+                // Determinar el status inicial
+                let status = 'Aprobado';
+                if (type === 'Salida' || type === 'Ajuste') {
+                    status = 'Pendiente';
                 }
 
                 // Insert movement
@@ -94,12 +89,61 @@ function createInventoryStore() {
                         product_id: productId,
                         movement_type: type,
                         quantity: quantity,
+                        status: status,
                         notes: notes
                     }]);
 
                 if (error) throw error;
                 
                 await this.fetchProducts();
+                await this.fetchMovements();
+                return true;
+            } catch (err) {
+                update(state => ({ ...state, error: err.message }));
+                throw err;
+            }
+        },
+
+        // Aprobar un movimiento pendiente
+        async approveMovement(movementId) {
+            try {
+                const state = get(this);
+                const movement = state.movements.find(m => m.id === movementId);
+                if (!movement) throw new Error("Movimiento no encontrado.");
+                
+                const product = state.products.find(p => p.id === movement.product_id);
+                
+                // Validar stock antes de aprobar una Salida
+                if (movement.movement_type === 'Salida' && movement.quantity > product.current_stock) {
+                    throw new Error(`Error: Inventario insuficiente. Solo quedan ${product.current_stock} unidades.`);
+                }
+
+                const { error } = await supabase
+                    .from('inventory_movements')
+                    .update({ status: 'Aprobado' })
+                    .eq('id', movementId);
+
+                if (error) throw error;
+                
+                await this.fetchProducts();
+                await this.fetchMovements();
+                return true;
+            } catch (err) {
+                update(state => ({ ...state, error: err.message }));
+                throw err;
+            }
+        },
+
+        // Rechazar un movimiento pendiente
+        async rejectMovement(movementId) {
+            try {
+                const { error } = await supabase
+                    .from('inventory_movements')
+                    .update({ status: 'Rechazado' })
+                    .eq('id', movementId);
+
+                if (error) throw error;
+                
                 await this.fetchMovements();
                 return true;
             } catch (err) {

@@ -16,10 +16,23 @@
             'products.sku': 'SKU',
             'products.name': 'Producto',
             'movement_type': 'Tipo',
+            'status': 'Estado',
             'quantity': 'Cantidad',
             'notes': 'Notas'
         };
         downloadCSV($inventoryStore.movements, 'historial_movimientos.csv', columns);
+    }
+
+    async function handleApprove(id) {
+        if(confirm("¿Estás seguro de aprobar este movimiento? Se actualizará el inventario físico.")) {
+            await inventoryStore.approveMovement(id);
+        }
+    }
+
+    async function handleReject(id) {
+        if(confirm("¿Rechazar esta solicitud? No afectará el inventario.")) {
+            await inventoryStore.rejectMovement(id);
+        }
     }
 </script>
 
@@ -45,8 +58,10 @@
                     <tr>
                         <th>Producto</th>
                         <th>Tipo</th>
+                        <th>Estado</th>
                         <th>Cantidad</th>
                         <th>Fecha</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -59,8 +74,13 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="pill-badge {item.movement_type === 'Entrada' ? 'bg-green' : 'bg-red'}">
+                                <span class="pill-badge {item.movement_type === 'Entrada' ? 'bg-green' : item.movement_type === 'Ajuste' ? 'bg-indigo' : 'bg-red'}">
                                     {item.movement_type}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge {item.status === 'Aprobado' ? 'status-approved' : item.status === 'Pendiente' ? 'status-pending' : 'status-rejected'}">
+                                    {item.status || 'Aprobado'}
                                 </span>
                             </td>
                             <td class="font-medium">
@@ -68,6 +88,14 @@
                             </td>
                             <td class="text-light">
                                 {formatDate(item.movement_date)}
+                            </td>
+                            <td>
+                                {#if item.status === 'Pendiente'}
+                                    <div class="action-buttons">
+                                        <button class="btn-icon approve" on:click={() => handleApprove(item.id)} title="Aprobar">✓</button>
+                                        <button class="btn-icon reject" on:click={() => handleReject(item.id)} title="Rechazar">✗</button>
+                                    </div>
+                                {/if}
                             </td>
                         </tr>
                     {/each}
@@ -169,6 +197,68 @@
     .bg-red {
         background-color: #fee2e2;
         color: #b91c1c;
+    }
+
+    .bg-indigo {
+        background-color: #e0e7ff;
+        color: #4f46e5;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--radius-pill);
+        font-weight: 600;
+    }
+
+    .status-approved {
+        background-color: #ecfdf5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+    }
+
+    .status-pending {
+        background-color: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+    }
+
+    .status-rejected {
+        background-color: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: none;
+        font-weight: bold;
+        transition: transform 0.2s;
+    }
+    
+    .btn-icon:hover {
+        transform: scale(1.1);
+    }
+
+    .btn-icon.approve {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .btn-icon.reject {
+        background-color: #ef4444;
+        color: white;
     }
 
     .loading {
