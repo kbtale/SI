@@ -48,11 +48,6 @@
         </div>
       {:else if $navigationStore.currentView === 'inventario'}
         <div class="inventory-view">
-          <div class="view-header">
-            <h2>Inventario General</h2>
-            <p>Gestión y monitoreo de existencias eléctricas.</p>
-          </div>
-          
           {#if showProductForm}
             <div class="modal-overlay">
               <ProductForm 
@@ -67,10 +62,6 @@
       {:else if $navigationStore.currentView === 'movimientos'}
         <div class="movements-view-grid">
             <div class="col-main">
-                <div class="view-header">
-                    <h2>Registro de Movimientos</h2>
-                    <p>Historial completo de entradas y salidas.</p>
-                </div>
                 <MovementsTable />
             </div>
             <div class="col-side">
@@ -112,7 +103,8 @@
       display: grid;
       grid-template-columns: 1fr 380px;
       gap: 1.5rem;
-      align-items: start;
+      align-items: stretch;
+      margin-top: 1rem;
   }
 
   .col-main {
@@ -136,12 +128,25 @@
       padding: 1.5rem;
   }
 
+  .col-side {
+      position: sticky;
+      top: 1.5rem;
+      align-self: start;
+  }
+
+  @media (max-width: 1200px) {
+      .movements-view-grid {
+          grid-template-columns: 1fr 340px;
+      }
+  }
+
   @media (max-width: 1024px) {
       .movements-view-grid {
           grid-template-columns: 1fr;
       }
       .col-side {
-          order: -1; /* Poner el formulario arriba en móviles */
+          position: static;
+          order: -1;
       }
   }
 </style>

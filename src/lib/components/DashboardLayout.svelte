@@ -259,52 +259,64 @@
   <main class="main-content">
     <!-- Top Navigation -->
     <header class="top-nav">
-      <div class="top-nav-left">
-        <button
-          class="hamburger-btn"
-          on:click|stopPropagation={toggleSidebar}
-          aria-label="Menu"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><line x1="3" y1="12" x2="21" y2="12" /><line
-              x1="3"
-              y1="6"
-              x2="21"
-              y2="6"
-            /><line x1="3" y1="18" x2="21" y2="18" /></svg
+        <div class="top-nav-left-group">
+          <button
+            class="hamburger-btn"
+            on:click|stopPropagation={toggleSidebar}
+            aria-label="Menu"
           >
-        </button>
-        <div class="search-bar">
-          <svg
-            class="search-icon"
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg
-          >
-          <input
-            type="text"
-            placeholder="Buscar..."
-            bind:value={topSearch}
-            on:keydown={handleSearchEnter}
-          />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><line x1="3" y1="12" x2="21" y2="12" /><line
+                x1="3"
+                y1="6"
+                x2="21"
+                y2="6"
+              /><line x1="3" y1="18" x2="21" y2="18" /></svg
+            >
+          </button>
+          
+          <div class="view-title-context">
+            <h2>
+              {#if $navigationStore.currentView === 'inicio'}Inicio
+              {:else if $navigationStore.currentView === 'inventario'}Inventario
+              {:else if $navigationStore.currentView === 'movimientos'}Movimientos
+              {:else if $navigationStore.currentView === 'reportes'}Reportes
+              {:else if $navigationStore.currentView === 'configuracion'}Configuración
+              {/if}
+            </h2>
+          </div>
+
+          <div class="search-bar">
+            <svg
+              class="search-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg
+            >
+            <input
+              type="text"
+              placeholder="Buscar..."
+              bind:value={topSearch}
+              on:keydown={handleSearchEnter}
+            />
+          </div>
         </div>
-      </div>
 
       <div class="top-nav-actions">
         <div class="notifications-wrapper">
@@ -550,9 +562,24 @@
     justify-content: space-between;
     align-items: center;
     background-color: var(--bg-card);
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     border-radius: var(--radius-pill);
     box-shadow: var(--shadow-soft);
+  }
+
+  .top-nav-left-group {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex: 1;
+  }
+
+  .view-title-context h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+    white-space: nowrap;
   }
 
   .search-bar {

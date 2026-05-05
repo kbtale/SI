@@ -33,8 +33,6 @@
 
 <div class="settings-container">
     <div class="view-header">
-        <h2>Configuración del Sistema</h2>
-        <p>Gestiona la identidad visual y parámetros generales de la empresa.</p>
     </div>
 
     <div class="card settings-card">

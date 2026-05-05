@@ -35,8 +35,6 @@
 
 <div class="report-container">
     <div class="view-header">
-        <h2>Reportes y Análisis</h2>
-        <p>Visión profunda del valor y distribución del inventario.</p>
     </div>
 
     <div class="grid">
