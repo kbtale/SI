@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
+  import { fade } from "svelte/transition";
   import { inventoryStore } from "../inventoryStore.js";
 
   const dispatch = createEventDispatcher();
@@ -8,6 +9,7 @@
   let movementType = "Entrada";
   let quantity = 1;
   let notes = "";
+  let invoiceNumber = "";
 
   let loading = false;
   let error = null;
@@ -20,11 +22,16 @@
     loading = true;
     error = null;
     try {
+      let finalNotes = notes;
+      if (movementType === "Entrada" && invoiceNumber.trim() !== "") {
+        finalNotes = `[Factura: ${invoiceNumber}] ${notes}`.trim();
+      }
+
       await inventoryStore.addMovement({
         productId: parseInt(productId),
         type: movementType,
         quantity: quantity,
-        notes: notes,
+        notes: finalNotes,
       });
       dispatch("success");
       reset();
@@ -40,6 +47,7 @@
     movementType = "Entrada";
     quantity = 1;
     notes = "";
+    invoiceNumber = "";
   }
 </script>
 
@@ -66,41 +74,53 @@
       </select>
     </div>
 
-    <div class="row">
-      <div class="field">
-        <span class="field-label">Tipo de Movimiento</span>
-        <div class="toggle-group">
-          <button
-            type="button"
-            class="toggle-btn {movementType === 'Entrada' ? 'active in' : ''}"
-            on:click={() => (movementType = "Entrada")}
-          >
-            Entrada
-          </button>
-          <button
-            type="button"
-            class="toggle-btn {movementType === 'Salida' ? 'active out' : ''}"
-            on:click={() => (movementType = "Salida")}
-          >
-            Salida
-          </button>
-          <button
-            type="button"
-            class="toggle-btn {movementType === 'Ajuste' ? 'active adjust' : ''}"
-            on:click={() => (movementType = "Ajuste")}
-          >
-            Ajuste
-          </button>
-        </div>
-      </div>
-      <div class="field">
-        <label for="qty">Cantidad {movementType === 'Ajuste' ? '(puede ser negativo)' : ''}</label>
-        <input id="qty" type="number" min={movementType === 'Ajuste' ? '' : '1'} step="1" bind:value={quantity} required />
-        {#if selectedProduct}
-          <span class="unit-hint">{selectedProduct.unit}</span>
-        {/if}
+    <div class="field">
+      <span class="field-label">Tipo de Movimiento</span>
+      <div class="toggle-group">
+        <button
+          type="button"
+          class="toggle-btn {movementType === 'Entrada' ? 'active in' : ''}"
+          on:click={() => (movementType = "Entrada")}
+        >
+          Entrada
+        </button>
+        <button
+          type="button"
+          class="toggle-btn {movementType === 'Salida' ? 'active out' : ''}"
+          on:click={() => (movementType = "Salida")}
+        >
+          Salida
+        </button>
+        <button
+          type="button"
+          class="toggle-btn {movementType === 'Ajuste' ? 'active adjust' : ''}"
+          on:click={() => (movementType = "Ajuste")}
+        >
+          Ajuste
+        </button>
       </div>
     </div>
+
+    <div class="field">
+      <label for="qty">Cantidad {movementType === 'Ajuste' ? '(puede ser negativo)' : ''}</label>
+      <input id="qty" type="number" min={movementType === 'Ajuste' ? '' : '1'} step="1" bind:value={quantity} required />
+      {#if selectedProduct}
+        <span class="unit-hint">{selectedProduct.unit}</span>
+      {/if}
+    </div>
+
+    {#if movementType === "Entrada"}
+      <div class="field" transition:fade={{ duration: 200 }}>
+        <label for="invoice">Número de Factura / Proveedor</label>
+        <input
+          id="invoice"
+          type="text"
+          bind:value={invoiceNumber}
+          placeholder="Ej: FAC-2026-001"
+          required
+        />
+      </div>
+    {/if}
 
     <div class="field">
       <label for="notes">Notas / Observaciones</label>
@@ -147,12 +167,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-  }
-
-  .row {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 1.5rem;
   }
 
   .field {

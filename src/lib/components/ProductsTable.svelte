@@ -136,6 +136,23 @@
     };
     downloadCSV($inventoryStore.products, "inventario_total.csv", columns);
   }
+
+  async function handleCalculateABC() {
+    try {
+      const updated = await inventoryStore.calculateABC();
+      if (updated) {
+        alert("Clasificación ABC actualizada exitosamente.");
+      } else {
+        alert("No hay productos o no hay cambios.");
+      }
+    } catch (err) {
+      alert("Error calculando ABC: " + err.message);
+    }
+  }
+
+  function handlePrintAudit() {
+    window.print();
+  }
 </script>
 
 <div class="card products-container">
@@ -182,8 +199,16 @@
         Exportar CSV
       </button>
 
+      <button class="pill-badge secondary-btn hide-print" on:click={handleCalculateABC} title="Asignar Categoría A,B,C">
+        Análisis ABC
+      </button>
+
+      <button class="pill-badge secondary-btn hide-print" on:click={handlePrintAudit}>
+        Lista de Auditoría
+      </button>
+
       <button
-        class="pill-badge primary-btn"
+        class="pill-badge primary-btn hide-print"
         on:click={() => dispatch("showAddForm")}
       >
         + Nuevo Producto
@@ -224,10 +249,16 @@
               ><span class="category-tag">{product.category || "Sin Cat."}</span
               ></td
             >
-            <td class="font-bold">{product.current_stock}</td>
+            <td class="font-medium {product.current_stock <= product.reorder_point ? 'text-red' : ''}">
+              {product.current_stock}
+              <span class="text-light">{product.unit || "unds"}</span>
+              {#if product.current_stock <= product.reorder_point}
+                 <span class="pill-badge bad" title="Punto de reorden alcanzado" style="margin-left:4px; font-size:0.65rem;">Alerta</span>
+              {/if}
+            </td>
             <td class="hide-mobile"
               ><span class="abc-badge {getAbcClass(product.abc_class)}"
-                >{product.abc_class}</span
+                >{product.abc_class || "C"}</span
               ></td
             >
             <td class="hide-xs"
@@ -274,6 +305,35 @@
       </div>
     </div>
   {/if}
+</div>
+
+<div class="audit-print-area">
+  <h2>Lista de Verificación Física (Conteo Cíclico)</h2>
+  <p>Fecha de auditoría: {new Date().toLocaleDateString()}</p>
+  <table class="print-table">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Producto</th>
+        <th>Categoría</th>
+        <th>Cant. Sistema</th>
+        <th>Cant. Física (Auditoría)</th>
+        <th>Observaciones / Ajustes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {#each $inventoryStore.products as product}
+        <tr>
+          <td>{product.sku || 'N/A'}</td>
+          <td>{product.name}</td>
+          <td>{product.category || 'N/A'}</td>
+          <td>{product.current_stock} {product.unit || 'unds'}</td>
+          <td class="blank-cell"></td>
+          <td class="blank-cell"></td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
 </div>
 
 <style>
@@ -545,6 +605,74 @@
       justify-content: center;
       flex-direction: column;
       align-items: center;
+    }
+  }
+
+  td.font-medium.text-red {
+    color: #ef4444;
+  }
+  
+  .bad {
+    background-color: #fee2e2;
+    color: #b91c1c;
+  }
+
+  /* ------------------- PRINT VIEW ------------------- */
+  .audit-print-area {
+    display: none;
+  }
+
+  @media print {
+    :global(html), :global(body) {
+      background: white;
+      margin: 0;
+      padding: 0;
+    }
+    
+    :global(body #app > *), :global(body .sidebar), :global(body .top-nav) {
+      display: none;
+    }
+
+    div.products-container {
+      display: none;
+    }
+
+    div.audit-print-area {
+      display: block;
+      width: 100%;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+
+    .audit-print-area h2 {
+      margin-bottom: 5px;
+      color: #000;
+    }
+    
+    .audit-print-area p {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .print-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .print-table th, .print-table td {
+      border: 1px solid #000;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    .print-table th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+
+    .blank-cell {
+      min-width: 120px;
     }
   }
 </style>

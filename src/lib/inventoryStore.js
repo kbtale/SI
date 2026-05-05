@@ -228,6 +228,59 @@ function createInventoryStore() {
                 update(state => ({ ...state, error: err.message, loading: false }));
                 throw err;
             }
+        },
+        // Calculate ABC Classification (80-15-5 rule)
+        async calculateABC() {
+            update(state => ({ ...state, loading: true, error: null }));
+            try {
+                const state = get(this);
+                let products = [...state.products];
+                
+                products = products.map(p => ({
+                    ...p,
+                    totalValue: (p.current_stock || 0) * (p.unit_cost || 0)
+                }));
+                
+                products.sort((a, b) => b.totalValue - a.totalValue);
+                const grandTotal = products.reduce((sum, p) => sum + p.totalValue, 0);
+                
+                if (grandTotal === 0) {
+                    update(state => ({ ...state, loading: false }));
+                    return false;
+                }
+                
+                let cumulativeValue = 0;
+                const updates = [];
+                
+                for (let p of products) {
+                    cumulativeValue += p.totalValue;
+                    const cumulativePercentage = cumulativeValue / grandTotal;
+                    
+                    let newClass = 'C';
+                    if (cumulativePercentage <= 0.80) {
+                        newClass = 'A';
+                    } else if (cumulativePercentage <= 0.95) {
+                        newClass = 'B';
+                    }
+                    
+                    if (p.abc_class !== newClass) {
+                        updates.push({ id: p.id, abc_class: newClass });
+                    }
+                }
+                
+                if (updates.length > 0) {
+                    await Promise.all(updates.map(u => 
+                        supabase.from('products').update({ abc_class: u.abc_class }).eq('id', u.id)
+                    ));
+                    await this.fetchProducts();
+                }
+                
+                update(state => ({ ...state, loading: false }));
+                return true;
+            } catch (err) {
+                update(state => ({ ...state, error: err.message, loading: false }));
+                throw err;
+            }
         }
     };
 }

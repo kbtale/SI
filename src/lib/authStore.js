@@ -96,7 +96,6 @@ function createAuthStore() {
 
         async signOut() {
              try {
-                // Limpieza manual de persistencia para evitar sesiones "pegajosas"
                 Object.keys(localStorage).forEach(key => {
                     if (key.includes('supabase.auth.token') || key.includes('sb-')) {
                         localStorage.removeItem(key);
