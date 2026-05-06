@@ -292,6 +292,7 @@
               {:else if $navigationStore.currentView === 'movimientos'}Movimientos
               {:else if $navigationStore.currentView === 'reportes'}Reportes
               {:else if $navigationStore.currentView === 'configuracion'}Configuración
+              {:else if $navigationStore.currentView === 'manual'}Manual de Usuario
               {/if}
             </h2>
           </div>

@@ -13,6 +13,7 @@
   import AnalyticsReport from './lib/components/AnalyticsReport.svelte';
   import CompanySettingsForm from './lib/components/CompanySettingsForm.svelte';
   import Login from './lib/components/Login.svelte';
+  import UserManual from './lib/components/UserManual.svelte';
 
   let showProductForm = false;
 
@@ -72,6 +73,8 @@
         <AnalyticsReport />
       {:else if $navigationStore.currentView === 'configuracion'}
         <CompanySettingsForm />
+      {:else if $navigationStore.currentView === 'manual'}
+        <UserManual />
       {/if}
     </DashboardLayout>
 {/if}

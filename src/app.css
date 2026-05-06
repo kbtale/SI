@@ -81,7 +81,7 @@ a {
 
 /* Global responsive utilities */
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .view-header h2 {
