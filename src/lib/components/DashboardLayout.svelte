@@ -25,6 +25,7 @@
       id: p.id,
       title: "Stock Crítico",
       message: `${p.name} tiene solo ${p.current_stock} ${p.unit}`,
+      name: p.name,
       sku: p.sku,
     }));
 
@@ -360,6 +361,8 @@
                       class="note-item"
                       on:click={() => {
                         navigationStore.setView("inventario");
+                        const query = note.sku && note.sku !== '-' ? note.sku : note.name;
+                        navigationStore.setSearchQuery(query);
                         showNotifications = false;
                       }}
                     >

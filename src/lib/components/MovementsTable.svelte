@@ -46,12 +46,33 @@
     }
   }
 
+  // Search and Filtering
+  let searchQuery = "";
+  $: {
+    if ($navigationStore.searchQuery !== undefined) {
+      searchQuery = $navigationStore.searchQuery;
+    }
+  }
+
+  // Reset page when search query changes
+  $: if (searchQuery !== undefined) currentPage = 1;
+
+  $: filteredMovements = ($inventoryStore.movements || []).filter(m => {
+    if (!searchQuery) return true;
+    const search = searchQuery.toLowerCase();
+    const prodName = m.products?.name?.toLowerCase() || "";
+    const prodSku = m.products?.sku?.toLowerCase() || "";
+    const type = m.movement_type?.toLowerCase() || "";
+    const status = m.status?.toLowerCase() || "";
+    return prodName.includes(search) || prodSku.includes(search) || type.includes(search) || status.includes(search);
+  });
+
   // Pagination logic
   let currentPage = 1;
   const itemsPerPage = 10;
 
-  $: totalPages = Math.max(1, Math.ceil(($inventoryStore.movements?.length || 0) / itemsPerPage));
-  $: paginatedMovements = ($inventoryStore.movements || []).slice(
+  $: totalPages = Math.max(1, Math.ceil(filteredMovements.length / itemsPerPage));
+  $: paginatedMovements = filteredMovements.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -100,7 +121,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each $navigationStore.currentView === 'movimientos' ? paginatedMovements : ($inventoryStore.movements || []).slice(0, 5) as item (item.id)}
+          {#each $navigationStore.currentView === 'movimientos' ? paginatedMovements : filteredMovements.slice(0, 5) as item (item.id)}
             <tr>
               <td>
                 <div class="product-info">
@@ -189,7 +210,7 @@
   {#if $navigationStore.currentView === 'movimientos' && totalPages > 1}
     <div class="pagination">
       <div class="page-info">
-        Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, $inventoryStore.movements.length)} de {$inventoryStore.movements.length}
+        Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredMovements.length)} de {filteredMovements.length}
       </div>
       <div class="page-controls">
         <button class="page-btn" on:click={prevPage} disabled={currentPage === 1} aria-label="Anterior">

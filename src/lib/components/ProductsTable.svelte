@@ -18,6 +18,22 @@
   let sortKey = "name";
   let sortDirection = 0; // 0: off, 1: asc, -1: desc
 
+  let selectedProduct = null;
+  let showDetailsDrawer = false;
+
+  function openDetails(product) {
+    selectedProduct = product;
+    showDetailsDrawer = true;
+  }
+
+  function closeDetails() {
+    showDetailsDrawer = false;
+  }
+
+  $: selectedProductMovements = selectedProduct
+    ? ($inventoryStore.movements || []).filter(m => m.product_id === selectedProduct.id).slice(0, 5)
+    : [];
+
   function toggleSort(key) {
     if (sortKey !== key) {
       sortKey = key;
@@ -296,7 +312,7 @@
       </thead>
       <tbody>
         {#each paginatedProducts as product (product.id)}
-          <tr>
+          <tr on:click={() => openDetails(product)} class="clickable-row">
             <td>
               <span class="sku-cell">
                 {product.sku && product.sku !== "-"
@@ -371,6 +387,113 @@
     </div>
   {/if}
 </div>
+
+{#if showDetailsDrawer && selectedProduct}
+  <!-- Drawer Backdrop -->
+  <button
+    type="button"
+    class="drawer-backdrop hide-print"
+    on:click={closeDetails}
+    transition:fade={{ duration: 150 }}
+    aria-label="Cerrar detalle"
+  ></button>
+
+  <!-- Drawer Slide Panel -->
+  <div class="drawer-panel hide-print" transition:fade={{ duration: 200 }}>
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <span class="drawer-sku-badge">{selectedProduct.sku && selectedProduct.sku !== '-' ? selectedProduct.sku : 'S/N'}</span>
+        {#if selectedProduct.category}
+          <span class="drawer-category-badge">{selectedProduct.category}</span>
+        {/if}
+      </div>
+      <button class="drawer-close-btn" on:click={closeDetails} aria-label="Cerrar panel">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="drawer-content">
+      <h2 class="drawer-product-title">{selectedProduct.name}</h2>
+      
+      <!-- General status card inside drawer -->
+      <div class="drawer-status-card {selectedProduct.current_stock <= selectedProduct.reorder_point ? 'critical' : 'stable'}">
+        <div class="status-header">
+          <span class="status-dot-large"></span>
+          <h4>{selectedProduct.current_stock <= selectedProduct.reorder_point ? 'Alerta de Reorden' : 'Existencias Estables'}</h4>
+        </div>
+        <p>
+          {#if selectedProduct.current_stock <= selectedProduct.reorder_point}
+            El stock actual está por debajo del punto de reorden ({selectedProduct.reorder_point} {selectedProduct.unit || 'unds'}). Se requiere reposición.
+          {:else}
+            El nivel de stock está por encima del nivel de seguridad y del punto de reorden.
+          {/if}
+        </p>
+      </div>
+
+      <!-- Detail Grid -->
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Existencias Actuales</span>
+          <span class="detail-value">{selectedProduct.current_stock} <span class="detail-unit">{selectedProduct.unit || 'unds'}</span></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Costo Unitario</span>
+          <span class="detail-value">${selectedProduct.unit_cost?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Valor del Stock</span>
+          <span class="detail-value-highlight">${(selectedProduct.current_stock * selectedProduct.unit_cost)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Clasificación ABC</span>
+          <span class="detail-abc-badge {getAbcClass(selectedProduct.abc_class)}">{selectedProduct.abc_class || 'C'}</span>
+        </div>
+      </div>
+
+      <!-- Stock limits information -->
+      <div class="limits-section">
+        <h3>Límites de Almacén</h3>
+        <div class="limits-grid">
+          <div class="limit-box">
+            <span class="limit-label">Stock de Seguridad</span>
+            <span class="limit-val">{selectedProduct.safety_stock || 0} {selectedProduct.unit || 'unds'}</span>
+          </div>
+          <div class="limit-box">
+            <span class="limit-label">Punto de Reorden</span>
+            <span class="limit-val">{selectedProduct.reorder_point || 0} {selectedProduct.unit || 'unds'}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent movements history for this specific product -->
+      <div class="drawer-movements-section">
+        <h3>Historial Reciente</h3>
+        {#if selectedProductMovements.length === 0}
+          <div class="drawer-empty-state">No se registran movimientos recientes.</div>
+        {:else}
+          <div class="drawer-movements-list">
+            {#each selectedProductMovements as mv}
+              <div class="drawer-movement-item">
+                <div class="mv-top">
+                  <span class="mv-badge {mv.movement_type === 'Entrada' ? 'bg-green' : mv.movement_type === 'Ajuste' ? 'bg-indigo' : 'bg-red'}">
+                    {mv.movement_type}
+                  </span>
+                  <span class="mv-qty">
+                    {mv.movement_type === 'Salida' ? '-' : '+'}{mv.quantity} {selectedProduct.unit || 'unds'}
+                  </span>
+                </div>
+                <div class="mv-bottom">
+                  <span class="mv-notes">{mv.notes || 'Sin observaciones'}</span>
+                  <span class="mv-date">{new Date(mv.movement_date).toLocaleDateString('es-VE', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
 
 <div class="audit-print-area">
   <h2>Lista de Verificación Física (Conteo Cíclico)</h2>
@@ -827,6 +950,374 @@
 
     .blank-cell {
       min-width: 120px;
+    }
+  }
+
+  /* Clickable Table Rows */
+  .clickable-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .clickable-row:hover {
+    background-color: var(--bg-canvas);
+  }
+
+  /* Drawer (Slide-out Panel) */
+  .drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .drawer-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 460px;
+    height: 100vh;
+    background-color: var(--bg-card);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    animation: slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes slideLeft {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .drawer-header-left {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .drawer-sku-badge {
+    font-family: monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background-color: var(--bg-canvas);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+  }
+
+  .drawer-category-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    background-color: rgba(30, 58, 138, 0.08);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .drawer-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+
+  .drawer-close-btn:hover {
+    background-color: var(--bg-canvas);
+    color: var(--text-main);
+  }
+
+  .drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .drawer-product-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  /* Drawer Status Cards */
+  .drawer-status-card {
+    padding: 1rem;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .drawer-status-card.stable {
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+  }
+
+  .drawer-status-card.critical {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+
+  .status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .status-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .drawer-status-card.stable .status-header h4 {
+    color: #065f46;
+  }
+
+  .drawer-status-card.critical .status-header h4 {
+    color: #991b1b;
+  }
+
+  .status-dot-large {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .drawer-status-card.stable .status-dot-large {
+    background-color: #10b981;
+  }
+
+  .drawer-status-card.critical .status-dot-large {
+    background-color: #ef4444;
+  }
+
+  .drawer-status-card p {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .drawer-status-card.stable p {
+    color: #047857;
+  }
+
+  .drawer-status-card.critical p {
+    color: #b91c1c;
+  }
+
+  /* Detail Grid */
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .detail-item {
+    background-color: var(--bg-canvas);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .detail-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .detail-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .detail-value-highlight {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--color-primary);
+  }
+
+  .detail-unit {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .detail-abc-badge {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  /* Limits section */
+  .limits-section h3, .drawer-movements-section h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0 0 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+  }
+
+  .limits-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .limit-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-canvas);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .limit-label {
+    color: var(--text-muted);
+  }
+
+  .limit-val {
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  /* Movements in Drawer */
+  .drawer-movements-section {
+    margin-top: 0.5rem;
+  }
+
+  .drawer-empty-state {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 1.5rem 0;
+    background-color: var(--bg-canvas);
+    border-radius: 12px;
+    border: 1px dashed var(--border-color);
+  }
+
+  .drawer-movements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .drawer-movement-item {
+    background-color: var(--bg-canvas);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .mv-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mv-badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+
+  .mv-badge.bg-green {
+    background-color: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+  }
+
+  .mv-badge.bg-indigo {
+    background-color: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+  }
+
+  .mv-badge.bg-red {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+  }
+
+  .mv-qty {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-main);
+  }
+
+  .mv-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    gap: 1rem;
+  }
+
+  .mv-notes {
+    color: var(--text-main);
+    font-style: italic;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-align: left;
+    flex: 1;
+  }
+
+  .mv-date {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  /* Handle responsive width on smaller displays */
+  @media (max-width: 520px) {
+    .drawer-panel {
+      width: 100%;
     }
   }
 </style>
